@@ -85,8 +85,7 @@ DQN_EPS_DECAY_FRAC = 0.6   # decay eps over this fraction of total training epis
 DQN_TARGET_UPDATE = 1000   # hard target-net sync every N learn steps
 DQN_WARMUP = 1000          # steps of pure exploration before learning starts
 DQN_LEARN_EVERY = 1        # learn every N env steps
-DQN_CKPT = os.path.join(PROC_DIR, "dqn_best.pt")          # Double DQN (default)
-DQN_CKPT_VANILLA = os.path.join(PROC_DIR, "dqn_vanilla_best.pt")  # vanilla DQN ablation
+DQN_CKPT = os.path.join(PROC_DIR, "dqn_best.pt")
 
 # ── Reproducibility ────────────────────────────────────────────────────────
 SEED = 42

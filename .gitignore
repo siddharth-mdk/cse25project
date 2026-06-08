@@ -9,3 +9,7 @@ data/raw/
 
 # OS
 .DS_Store
+
+# Regenerable model artifacts (notebook trains inline)
+data/processed/*.pt
+data/processed/dqn_history*.json
