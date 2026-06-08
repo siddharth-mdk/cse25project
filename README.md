@@ -51,16 +51,20 @@ env P&L.
 - **Phase 2 — Env** ✅ (built early as the shared engine) `btcdqn/env.py` —
   gym-style, two-sided actions, state includes position + unrealized P&L + `tau`;
   baseline and DQN use identical dynamics.
-- **Phase 3 — DQN** ✅ `btcdqn/dqn.py`, `train_dqn.py` — Double DQN, replay +
-  target net, action masking, MPS/CPU. Stable val Sharpe ~2.1 across epochs;
-  **test: mean P&L +0.98, Sharpe 2.20, win 79.5%** (beats fairval_t1+exit's
-  +0.43 / 0.96). Best-on-val checkpoint → `data/processed/dqn_best.pt`,
-  per-epoch history → `dqn_history.json`. Device auto-selects MPS; `--device cpu`
-  is ~5x faster for this tiny MLP.
+- **Phase 3 — DQN** ✅ `btcdqn/dqn.py` (`train_dqn.py` = optional CLI) — standard
+  (vanilla) DQN with experience replay, a target network, and action masking.
+  Stable val Sharpe ~2.2 across epochs; on test it beats every baseline (see
+  Phase 4). Reusable `dqn.train(...)` trains an agent and keeps the best-on-val
+  weights. Trains on CPU by default (the MLP is tiny, so CPU is faster than MPS);
+  `device=None` auto-selects MPS/CUDA. Checkpoints/history are regenerable and
+  git-ignored.
 - **Phase 4 — Notebook** ✅ `dqn_experiments.ipynb` (built by `build_notebook.py`).
-  Loads the checkpoint; test comparison, cumulative-P&L, calibration, DQN
-  behavior, example episode, and **σ + threshold sweep** ablations. Rebuild:
-  `python build_notebook.py`; execute with the `cse25` kernel.
+  Trains **two learning-rate configurations inline** (lr=1e-3 vs lr=2e-4) and
+  compares them to the baselines, plus training curves, cumulative-P&L,
+  calibration, behavior, example episode, and **σ + threshold sweep** ablations.
+  Test results (fee = 0): lr=2e-4 → mean P&L **+1.07**, Sharpe **2.25**, win 78%;
+  lr=1e-3 → **+0.98**, Sharpe 2.20 — both well above fairval_t1+exit (+0.43 /
+  0.96). Rebuild with `python build_notebook.py`, then Run All.
 
 All P&L is at **fee = 0** (upper bound on exploitable signal).
 
