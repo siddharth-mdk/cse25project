@@ -1,0 +1,15 @@
+# Core data pipeline
+pandas==3.0.3
+numpy==2.4.6
+pyarrow==24.0.0
+requests==2.34.2
+yfinance==1.4.1
+
+# DQN
+torch==2.12.0
+
+# Plots + notebook
+matplotlib==3.10.9
+nbformat==5.10.4
+nbconvert==7.17.1
+ipykernel==7.2.0

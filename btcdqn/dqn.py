@@ -73,10 +73,12 @@ class ReplayBuffer:
 
 
 class DoubleDQNAgent:
-    def __init__(self, state_size=E.STATE_SIZE, n_actions=E.N_ACTIONS, seed=C.SEED, device=None):
+    def __init__(self, state_size=E.STATE_SIZE, n_actions=E.N_ACTIONS, seed=C.SEED,
+                 device=None, double=True):
         torch.manual_seed(seed)
         np.random.seed(seed)
         random.seed(seed)
+        self.double = double  # True = Double DQN, False = vanilla DQN (ablation)
         self.device = device or default_device()
         self.policy = QNet(state_size, n_actions).to(self.device)
         self.target = QNet(state_size, n_actions).to(self.device)
@@ -112,10 +114,13 @@ class DoubleDQNAgent:
 
         q = self.policy(s).gather(1, a).squeeze(1)
         with torch.no_grad():
-            # policy net picks next action (masked), target net evaluates it
-            q_next_policy = self.policy(s2).masked_fill(~m2, -float("inf"))
-            next_a = q_next_policy.argmax(1, keepdim=True)
-            q_next = self.target(s2).gather(1, next_a).squeeze(1)
+            if self.double:
+                # Double DQN: policy net selects next action, target net evaluates it
+                next_a = self.policy(s2).masked_fill(~m2, -float("inf")).argmax(1, keepdim=True)
+                q_next = self.target(s2).gather(1, next_a).squeeze(1)
+            else:
+                # Vanilla DQN: target net both selects and evaluates (max)
+                q_next = self.target(s2).masked_fill(~m2, -float("inf")).max(1)[0]
             target = r + C.DQN_GAMMA * q_next * (1.0 - d)
         loss = nn.functional.smooth_l1_loss(q, target)
         self.opt.zero_grad()

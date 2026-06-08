@@ -204,7 +204,26 @@ ax[1].set(title="# trades vs threshold", xlabel="threshold"); ax[1].legend()
 plt.tight_layout(); plt.show()
 """)
 
-md("""## 11. Takeaways
+md("""## 11. Ablation — Double DQN vs vanilla DQN
+
+Compares our Double DQN against a standard (vanilla) DQN trained identically.
+Vanilla DQN uses the target network to both *select* and *evaluate* the next
+action, which tends to overestimate Q-values; Double DQN decouples the two.""")
+code("""
+rows = []
+for name, path, dbl in [("double", C.DQN_CKPT, True), ("vanilla", C.DQN_CKPT_VANILLA, False)]:
+    if not os.path.exists(path):
+        print(f"[skip] {name}: no checkpoint — run `python train_dqn.py --variant {name}`")
+        continue
+    ag = D.DoubleDQNAgent(device="cpu", double=dbl); ag.load(path)
+    r = M.run_backtest(D.GreedyPolicy(ag), eps, manifest, "test", fee_rate=0.0)
+    r["name"] = f"DQN ({name})"
+    rows.append(r)
+if rows:
+    print(M.metrics_table(rows))
+""")
+
+md("""## 12. Takeaways
 
 - The spot-implied **fair value is well-calibrated and profitable**, confirming the
   contract lags spot (the inefficiency thesis) — Tier 1 + early-exit is the

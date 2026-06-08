@@ -48,13 +48,20 @@ def main() -> None:
     ap.add_argument("--epochs", type=int, default=C.DQN_EPOCHS)
     ap.add_argument("--device", type=str, default=None,
                     help="mps | cpu | cuda (default: auto, prefers mps)")
+    ap.add_argument("--variant", choices=["double", "vanilla"], default="double",
+                    help="double = Double DQN (default); vanilla = standard DQN (ablation)")
     args = ap.parse_args()
+
+    is_double = args.variant == "double"
+    ckpt_path = C.DQN_CKPT if is_double else C.DQN_CKPT_VANILLA
+    hist_path = os.path.join(C.PROC_DIR,
+                             "dqn_history.json" if is_double else "dqn_history_vanilla.json")
 
     eps, manifest = data.load()
     tr_mids, tr_by, tr_lab = build_episode_index(eps, manifest, "train")
 
-    agent = D.DoubleDQNAgent(device=args.device)
-    print(f"device: {agent.device}")
+    agent = D.DoubleDQNAgent(device=args.device, double=is_double)
+    print(f"variant: {args.variant} | device: {agent.device}")
     total_eps = args.epochs * len(tr_mids)
     decay_eps = max(1, int(C.DQN_EPS_DECAY_FRAC * total_eps))
     rng = random.Random(C.SEED)
@@ -80,7 +87,7 @@ def main() -> None:
         tag = ""
         if val["mean_pnl"] > best_val:
             best_val = val["mean_pnl"]
-            agent.save(C.DQN_CKPT)
+            agent.save(ckpt_path)
             tag = "  <- best (saved)"
         print(f"epoch {epoch:2d} | eps={epsilon_at(gi):.3f} | train_meanR={np.mean(ep_rewards):+.4f} "
               f"| val_meanPnL={val['mean_pnl']:+.4f} sharpe={val['sharpe']:+.3f} "
@@ -90,11 +97,11 @@ def main() -> None:
                         "val_mean_pnl": val["mean_pnl"], "val_sharpe": val["sharpe"],
                         "val_trades": val["n_trades"], "val_win_rate": val["win_rate"]})
 
-    with open(os.path.join(C.PROC_DIR, "dqn_history.json"), "w") as f:
+    with open(hist_path, "w") as f:
         json.dump(history, f, indent=2)
 
     # ── final head-to-head on TEST with the best checkpoint ──────────────────
-    agent.load(C.DQN_CKPT)
+    agent.load(ckpt_path)
     sigma = B.estimate_sigma_per_min(eps[eps.split == "train"])
     contenders = {
         "random": B.RandomPolicy(),
@@ -102,8 +109,14 @@ def main() -> None:
         "fairval_t1": B.FairValuePolicy(tier=1, threshold=0.05, sigma_per_min=sigma),
         "fairval_t1+exit": B.FairValuePolicy(tier=1, threshold=0.05, sigma_per_min=sigma,
                                              exit_on_converge=True),
-        "DQN (best)": D.GreedyPolicy(agent),
+        f"DQN ({args.variant})": D.GreedyPolicy(agent),
     }
+    # If the other variant's checkpoint exists, include it for a direct comparison.
+    other_path = C.DQN_CKPT_VANILLA if is_double else C.DQN_CKPT
+    if os.path.exists(other_path):
+        other = D.DoubleDQNAgent(device=args.device, double=not is_double)
+        other.load(other_path)
+        contenders[f"DQN ({'vanilla' if is_double else 'double'})"] = D.GreedyPolicy(other)
     print("\n===== TEST: DQN vs baselines =====")
     results = []
     for name, pol in contenders.items():
